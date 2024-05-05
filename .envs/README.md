@@ -1,4 +1,4 @@
-The example mimic env file serves as a guide of what the file should look like. Basically it needs to contain:
+The [example mimic env file](example_mimic.env) serves as a guide of what the file should look like. Basically it needs to contain:
 ```
 PHYSIONET_USER=<username_goes_here>
 PHYSIONET_PASSWORD=<password_goes_here_between_quotations>
