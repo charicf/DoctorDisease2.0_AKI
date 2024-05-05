@@ -1,0 +1,305 @@
+
+networks:
+  ml_logging:
+    driver: bridge
+  mlflow_postgres:
+    driver: bridge
+  s3:
+    driver: bridge
+  data_management:
+    driver: bridge
+  mimic_data:
+    driver: bridge
+
+volumes:
+  db-data:
+    name: ${DATA_POSTGRES_DB}
+  mimic-db-data:
+    name: ${MIMIC_POSTGRES_DB}
+  mlflow-data:
+    name: ${MLFLOW_POSTGRES_DB}
+
+services:
+  minio:
+    container_name: minio
+    hostname: minio
+    image: minio/minio:latest
+    command: server --console-address ":9001" /data/
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - s3
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+      MINIO_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+    - ./data/mlflow/minio/:/data
+    - ./Makefile:/home/Makefile:ro
+
+  create_buckets:
+    image: minio/minio:latest
+    volumes:
+    - ./data/mlflow/minio/:/data
+    networks:
+      - s3
+    depends_on:
+      - minio
+    # echoed lines are left intentionally, the docs aren't very informative and it's good
+    # to know what we have available for something like this
+    entrypoint: >
+      /bin/sh -c "
+      echo mc config host add aws http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
+      mc alias set s3 http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
+      echo /usr/bin/mc rm -r --force myminio/somebucketname;
+      mc mb s3/${AWS_S3_BUCKET_NAME} --ignore-existing --region ${AWS_REGION};
+      echo /usr/bin/mc policy download myminio/somebucketname;
+      exit 0;
+      "
+
+  nginx:
+    image: nginx:1.19.2-alpine
+    container_name: nginx
+    hostname: nginx
+    volumes:
+    - ./mlflow_server/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+    - "9000:9000"
+    - "9001:9001"
+    networks:
+    - s3
+    depends_on:
+    - minio
+
+  mlflow_postgresql:
+    container_name: postgres
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      PGDATA: /data/postgres
+    volumes:
+    # - ./data/mlflow/postgres/:/data/postgres
+    - mlflow-data:/data/postgres
+    ports:
+    - "5432:5432"
+    networks:
+    - mlflow_postgres
+
+  mlflow_pgadmin:
+    container_name: mlflow_pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+    - ./data/mlflow/pgadmin/:/var/lib/pgadmin
+    ports:
+    - "5050:80"
+    networks:
+    - mlflow_postgres
+
+  mlflow:
+    restart: always
+    build: ./mlflow_server
+    container_name: mlflow_server
+    # image: mlflow_server
+    ports:
+    - "5000:5000"
+    networks:
+    - mlflow_postgres
+    - s3
+    - ml_logging
+    environment:
+    - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    - MLFLOW_S3_ENDPOINT_URL=http://nginx:9000
+    command: mlflow server --backend-store-uri mlflow_postgresql://${MLFLOW_POSTGRES_USER}:${MLFLOW_POSTGRES_PASSWORD}@mlflow_postgresql/${MLFLOW_POSTGRES_DB} --default-artifact-root s3://${AWS_S3_BUCKET_NAME}/ --host 0.0.0.0
+    depends_on:
+    - nginx
+    - mlflow_postgresql
+
+  ml_model_dev_cpu:
+    build: ./ml_model
+    container_name: ml_model_dev_cpu
+    networks:
+    - ml_logging
+    - s3
+    - data_management
+    - mimic_data
+    volumes:
+    - ./ml_model:/app/ml_model
+    - ./utils:/app/utils
+    # - ~/.aws/:/root/.aws:ro # If AWS credentials need to be passed, or use environment
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      MLFLOW_S3_ENDPOINT_URL: http://nginx:9000
+      POSTGRES_USER: ${MIMIC_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MIMIC_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MIMIC_POSTGRES_DB}
+      POSTGRES_HOST: data_postgresql_mimic
+    command: sh -c "tail -f /dev/null"
+    depends_on:
+      - mlflow
+      # - data_api
+
+  ml_model_train_cpu:
+    build: ./ml_model
+    container_name: ml_model_train_cpu
+    networks:
+    - ml_logging
+    - s3
+    - data_management
+    - mimic_data
+    volumes:
+    - ./ml_model:/app/ml_model
+    # - ~/.aws/:/root/.aws:ro # If AWS credentials need to be passed, or use environment
+    environment:
+    - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    - MLFLOW_S3_ENDPOINT_URL=http://nginx:9000
+    command: conda run --no-capture-output -n ml_model python train.py
+    depends_on:
+     - mlflow
+     - data_postgresql_mimic
+    #  - data_api
+
+  mlflow_test:
+    build: ./ml_model
+    container_name: mlflow_test
+    networks:
+    - ml_logging
+    - s3
+    volumes:
+    - ./test/mlflow_test.py:/app/ml_model/mlflow_test.py
+    environment:
+    - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    - MLFLOW_S3_ENDPOINT_URL=http://nginx:9000
+    command: conda run --no-capture-output -n ml_model python mlflow_test.py --alpha=0.5 --l1-ratio=0.8
+    depends_on:
+    - mlflow
+
+  test:
+    build: ./test
+    container_name: test
+    # networks:
+    # - ml_logging
+    # - s3
+    volumes:
+    - ./:/ml_model/
+    # environment:
+    # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    # - MLFLOW_S3_ENDPOINT_URL=http://nginx:9000
+    command: sh -c "tail -f /dev/null"
+    # depends_on:
+    # - mlflow
+
+  ml_model_api:
+    build:
+      context: ./ml_model_api
+    container_name: ml_model_fastapi_server
+    networks:
+      - ml_logging
+      - s3
+    volumes:
+    - ./ml_model_api:/app/fastapi
+    - ./ml_model:/app/fastapi/ml_model
+    ports:
+    - "8000:8000"
+    environment:
+    - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    - MLFLOW_S3_ENDPOINT_URL=http://nginx:9000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+    - mlflow
+    command:  conda run --no-capture-output -n fastapi uvicorn main:app --reload --host 0.0.0.0
+
+  data_postgresql:
+      container_name: data_postgres
+      image: postgres
+      restart: always
+      environment:
+        POSTGRES_USER: ${DATA_POSTGRES_USER}
+        POSTGRES_PASSWORD: ${DATA_POSTGRES_PASSWORD}
+        POSTGRES_DB: ${DATA_POSTGRES_DB}
+        PGDATA: /data/postgres
+      volumes:
+      - db-data:/data/postgres
+      ports:
+      - "5435:5432"
+      networks:
+      - data_management
+
+
+  data_postgresql_mimic:
+    container_name: data_postgres_mimic
+    image: postgres
+    restart: always
+    # working_dir: /data
+    environment:
+      POSTGRES_USER: ${MIMIC_POSTGRES_USER}
+      PGUSER: ${MIMIC_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MIMIC_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MIMIC_POSTGRES_DB}
+      PGDATA: /data/postgres
+      MIMIC_USER: ${PHYSIONET_USER}
+      MIMIC_PASSWORD: ${PHYSIONET_PASSWORD}
+    volumes:
+    - mimic-db-data:/data/postgres
+    - ./data/mimic:/mimic
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${MIMIC_POSTGRES_DB} -U ${MIMIC_POSTGRES_USER}"]
+      # test: "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+      # test: pg_isready -U $$POSTGRES_USER
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    ports:
+    - "5454:5432"
+    networks:
+    - mimic_data
+
+
+  data_api:
+    build:
+      context: ./data_management_api
+    container_name: data_fastapi_server
+    networks:
+      - data_management
+    volumes:
+    - ./data_management_api:/app/fastapi
+    ports:
+    - "8080:8000"
+    environment:
+        POSTGRES_USER: ${DATA_POSTGRES_USER}
+        POSTGRES_PASSWORD: ${DATA_POSTGRES_PASSWORD}
+        POSTGRES_DB: ${DATA_POSTGRES_DB}
+        POSTGRES_HOST: data_postgresql
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    depends_on:
+    - data_postgresql
+    command:  conda run --no-capture-output -n fastapi uvicorn main:app --reload --host 0.0.0.0
+    # command: sh -c "tail -f /dev/null"
