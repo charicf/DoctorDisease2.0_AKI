@@ -8,16 +8,36 @@ from utils.logger import get_logger
 
 
 class MimicDBManager:
-    def __init__(self, logger: logging.Logger = get_logger("MimicManager"), port: int = 5432):
+    def __init__(
+        self,
+        host: str = os.environ.get("POSTGRES_HOST"),
+        database: str = os.environ.get("POSTGRES_DB"),
+        user: str = os.environ.get("POSTGRES_USER"),
+        password: str = os.environ.get("POSTGRES_PASSWORD"),
+        port: int = 5432,
+        logger: logging.Logger = get_logger("MimicManager"),
+    ):
         self.logger = logger
-        self.host = os.environ.get("POSTGRES_HOST")
-        self.database = os.environ.get("POSTGRES_DB")
-        self.user = os.environ.get("POSTGRES_USER")
-        self.password = os.environ.get("POSTGRES_PASSWORD")
+        self.host = host
+        self.database = database
+        self.user = user
+        self.password = password
         self.port = str(port)
 
         self.conn = None
         self.generate_connection()
+
+    def _execute_query(self, query):
+        try:
+            cur = self.conn.cursor()
+            cur.execute(query)
+            response = cur.fetchall()
+            cur.close()
+        except Exception as e:
+            self.logger.error(f"Error when executing query: {query}, error: {e}")
+            cur.connection.rollback()
+            response = []
+        return response
 
     def rollback(self):
         self.generate_connection()
@@ -40,16 +60,8 @@ class MimicDBManager:
     def retrieve_column_types(self, table_name: str, ignore_id: bool = True) -> dict:
         if self.table_exists(table_name):
             self.generate_connection()
-            query = (
-                f"""SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';"""
-            )
-            cur = self.conn.cursor()
-            cur.execute(query)
-            response = cur.fetchall()
-            cur.close()
-            # response = [resp[0] for resp in response]
-            if ignore_id:
-                response = [resp for resp in response if resp[0] != "id"]
+            query = f"""SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name.split('.')[1]}';"""
+            response = self._execute_query(query)
         else:
             response = []
         return dict(response)
@@ -109,11 +121,7 @@ class MimicDBManager:
         query = """SELECT table_schema, table_name
                     FROM information_schema.tables
                     WHERE table_schema IN ('mimiciv_icu', 'mimiciv_hosp', 'public')"""
-        self.generate_connection()
-        cur = self.conn.cursor()
-        cur.execute(query)
-        response = cur.fetchall()
-        cur.close()
+        response = self._execute_query(query)
         return [f"{resp[0]}.{resp[1]}" for resp in response]
 
     def table_exists(self, table_name: str) -> bool:
@@ -133,15 +141,12 @@ class MimicDBManager:
         cur.close()
         return response[0][0]
 
-    def retrieve_all(self, table_name: str) -> list:
+    def retrieve_all(self, table_name: str) -> pd.DataFrame:
         if self.table_exists(table_name):
-            self.generate_connection()
-            cur = self.conn.cursor()
-            cur.execute(f"SELECT * FROM {table_name}")
-            response = cur.fetchall()
-            cur.close()
+            sql_query = f"SELECT * FROM {table_name}"
+            response = pd.read_sql_query(sql_query, self.generate_connection())
         else:
-            response = []
+            response = pd.DataFrame()
         return response
 
     def count_rows(self, table_name: str) -> int:
