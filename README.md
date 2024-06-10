@@ -19,3 +19,12 @@ make deploy_local_ml_dev
 ```
 
 This container in turn is able to access the database through [http://data_postgresql_mimic:5432](http://data_postgresql_mimic:5432) . A working example that queries all of the tables in the database can be seen in the [EDA file](ml_model/EDA/mimic_iv_eda.ipynb)
+
+
+# Troubleshooting
+## Rebuilding the Mimic DB
+To rebuild the database locally, you can run:
+```
+make rebuild_mimic_database_local
+```
+This will recreate the database by deleting its docker volume and recreating the database container. It will not delete the already downloaded data, just the database.
