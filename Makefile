@@ -47,12 +47,13 @@ build_project_local:
 build_mimic_database_local:
 	@echo -e ${YELLOW} ${SPACER} Building mimic database locally ${SPACER} ${RESTORE}
 	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env up -d data_postgresql_mimic
-	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash create_db.sh
+	# docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash scripts/create_db.sh
 	@echo -e ${DONE_MSG}
 
 remove_mimic_database_local:
 	$(call setup_env,local)
 	@echo -e ${RED} ${SPACER} WARNING: Removing local mimic database and named volume: ${MIMIC_POSTGRES_DB} ${SPACER} ${RESTORE}
+	@echo -e ${RED} ${SPACER} WARNING: Waiting 10 seconds before starting ${MIMIC_POSTGRES_DB} ${SPACER} ${RESTORE}
 	@sleep 10
 	docker compose rm -sf data_postgresql_mimic
 	docker volume rm ${MIMIC_POSTGRES_DB}
