@@ -47,7 +47,7 @@ build_project_local:
 build_mimic_database_local:
 	@echo -e ${YELLOW} ${SPACER} Building mimic database locally ${SPACER} ${RESTORE}
 	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env up -d data_postgresql_mimic
-	# docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash scripts/create_db.sh
+	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash scripts/create_db.sh
 	@echo -e ${DONE_MSG}
 
 remove_mimic_database_local:
