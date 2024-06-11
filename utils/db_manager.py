@@ -120,7 +120,7 @@ class MimicDBManager:
     def retrieve_table_names(self) -> list:
         query = """SELECT table_schema, table_name
                     FROM information_schema.tables
-                    WHERE table_schema IN ('mimiciv_icu', 'mimiciv_hosp', 'public')"""
+                    WHERE table_schema NOT IN ('pg_catalog', 'information_schema')"""
         response = self._execute_query(query)
         return [f"{resp[0]}.{resp[1]}" for resp in response]
 
