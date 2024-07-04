@@ -265,6 +265,7 @@ services:
     volumes:
     - mimic-db-data:/data/postgres
     - ./data/mimic:/mimic
+    - ./data/aki_preprocessing:/data/aki_preprocessing
     - ./scripts:/mimic/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d ${MIMIC_POSTGRES_DB} -U ${MIMIC_POSTGRES_USER}"]

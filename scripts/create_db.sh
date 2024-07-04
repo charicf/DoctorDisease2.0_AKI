@@ -23,3 +23,4 @@ echo "--------------------Adding materialized views--------------------"
 # cd mimic-iv/concepts_postgres
 cd /mimic/scripts/concepts_postgres
 psql -d mimiciv_db -v ON_ERROR_STOP=1 -v mimic_data_dir=mimiciv/2.2 -f postgres-make-concepts.sql
+psql -d mimiciv_db -v ON_ERROR_STOP=1 -v mimic_data_dir=mimiciv/2.2 -f vasopressors_durations.sql

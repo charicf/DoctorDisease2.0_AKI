@@ -50,6 +50,11 @@ build_mimic_database_local:
 	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash scripts/create_db.sh
 	@echo -e ${DONE_MSG}
 
+create_preprocessed_data:
+	@echo -e ${YELLOW} ${SPACER} Creating preprocessed data ${SPACER} ${RESTORE}
+	docker compose --env-file ${LOCAL_ENV_PATH} --env-file .envs/mimic.env exec -w /mimic data_postgresql_mimic bash scripts/create_preprocessed_data.sh
+	@echo -e ${DONE_MSG}
+
 remove_mimic_database_local:
 	$(call setup_env,local)
 	@echo -e ${RED} ${SPACER} WARNING: Removing local mimic database and named volume: ${MIMIC_POSTGRES_DB} ${SPACER} ${RESTORE}
