@@ -140,6 +140,7 @@ services:
     volumes:
     - ./ml_model:/app/ml_model
     - ./utils:/app/utils
+    - ./data/aki_preprocessing:/app/data/aki_preprocessing
     # - ~/.aws/:/root/.aws:ro # If AWS credentials need to be passed, or use environment
     environment:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
