@@ -1,0 +1,7 @@
+make create-user mimic datadir="D:\DS4A\data\mimic-iii-clinical-database-demo-1.4" DBNAME="mimiciii" DBPASS='123!\"#qweQWE'
+
+make mimic datadir="/d/DS4A/data/mimic-iii-clinical-database-demo-1.4" DBNAME="mimiciii" DBPASS='123!\"#qweQWE'
+
+make mimic datadir="D:\DS4A\data\mimic-iii-clinical-database-demo-1.4" DBNAME="mimiciii" DBPASS='123!\"#qweQWE'
+
+
