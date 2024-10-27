@@ -9,7 +9,7 @@ urine output 6h             uo_rt_6hr
 Urine output 12h            uo_rt_12hr
 Urine output 24h            uo_rt_24hr
 Diastolic BP                diasbp_mean
-Glucose                     glucose_min, glucose_max from labs-kdigo_states_measured, glucose_mean from vitals-kdigo_stages_measured
+Glucose                     glucose_min, glucose_max - labs-kdigo_states_measured | glucose_mean - vitals-kdigo_stages_measured
 Respiratory rate            resprate_mean
 Hear rate                   heartrate_mean
 Bicarbonate                 bicarbonate_min, bicarbonate_max
@@ -20,13 +20,13 @@ Hemoglobin                  hemoglobin_min, hemoglobin_max
 sodium                      sodium_min, sodium_max
 chloride                    chloride_min, chloride_max
 White cell count
-Ventilation                 vent from vents-vasopressor-sedatives-kdigo_stages_measured
+Ventilation                 vent - vents-vasopressor-sedatives-kdigo_stages_measured
 Hematocrit                  hematocrit_min, hematocrit_max
 Blood urea nitrogen         bun_min, bun_max
 Urgent admission            URGENT
-Sedative                    sedative from vents-vasopressor-sedatives-kdigo_stages_measured
+Sedative                    sedative - vents-vasopressor-sedatives-kdigo_stages_measured
 Native american             AMERICAN INDIAN/ALASKA NATIVE
-Vasopressor                 vasopressor from vents-vasopressor-sedatives-kdigo_stages_measured
+Vasopressor                 vasopressor - vents-vasopressor-sedatives-kdigo_stages_measured
 Assian ethnicity            ASIAN
 Hispanic ethnicity          HISPANIC OR LATINO,HISPANIC/LATINO - CENTRAL AMERICAN,...
 Other ethnicity             OTHER
@@ -169,7 +169,7 @@ edouttime
 hospital_expire_flag
 
 ********************************************************************************************************************
-kdigo_stages_measured columns
+kdigo_stages_measured.csv columns
 
 subject_id
 hadm_id
