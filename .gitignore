@@ -166,3 +166,9 @@ cython_debug/
 data/
 # EDA images directory
 ml_model/EDA/images
+
+# Serialized files
+*.pkl
+
+# Saved model files
+*.pth
