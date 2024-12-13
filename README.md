@@ -20,6 +20,12 @@ make deploy_local_ml_dev
 
 This container in turn is able to access the database through [http://data_postgresql_mimic:5432](http://data_postgresql_mimic:5432) . A working example that queries all of the tables in the database can be seen in the [EDA file](ml_model/EDA/mimic_iv_eda.ipynb)
 
+## Creating the preprocessed data
+By running the command:
+```
+make create_preprocessed_data
+```
+The system will create/recreate the data perprocessing and modification process to create the input data for the [Preprocessing step](ml_model/preprocessing.ipynb)
 
 # Troubleshooting
 ## Rebuilding the Mimic DB
