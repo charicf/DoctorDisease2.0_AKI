@@ -27,8 +27,9 @@ WITH CSV HEADER DELIMITER ';';
 
 -- extract demographics of patients with at least one measurement of creatinine or urine output into icustay_detail-kdigo_stages_measured.csv
 COPY (
-    SELECT p.subject_id, a.hadm_id, i.stay_id, p.gender, p.anchor_age, p.anchor_year, p.anchor_year_group, a.admittime, a.dischtime, a.deathtime, a.race
-    FROM mimiciv_icu.icustays i
+    SELECT *
+    -- FROM mimiciv_icu.icustays i
+    FROM mimiciv_derived.icustay_detail i
     JOIN mimiciv_hosp.patients p ON i.subject_id = p.subject_id
     JOIN mimiciv_hosp.admissions a ON i.hadm_id = a.hadm_id
     WHERE i.stay_id IN (
