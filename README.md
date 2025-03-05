@@ -34,7 +34,7 @@ Extra preprocessing needs to be done on the data after it is passed through the 
 After the LSTM data has been preprocessed, the model can be trained by running the [LSTM Features python notebook](ml_model/LSTM_features.ipynb). This in turn will create the features-only version of the ML model designed by Vagliano, Hsu, and Schut (2022).
 
 ## Explaining the Model
-
+The [Explainability notebook](ml_model/Explainability.ipynb) details all the work related to building thwe timeSHAP explanations for the model.
 
 # Troubleshooting
 ## Rebuilding the Mimic DB
